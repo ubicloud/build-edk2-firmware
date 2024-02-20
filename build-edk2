@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# Derived from cloud-hypervisor integration test code.
+# Copyright (c) 2024, Ubicloud.  All rights reserved.
+# Copyright (c) 2019-2024, Cloud Hypervisor Contributors.  All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
 
+# Derived from cloud-hypervisor integration test code.
+#
 # Necessary build dependencies
 #
 # sudo -- bash -c 'apt-get update && apt-get install -y make gcc g++ flex bison nasm m4 uuid-dev g++'
