@@ -1,0 +1,20 @@
+name: edk2 build
+on: [create,push]
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        runs-on: [ubicloud, ubicloud-arm]
+    runs-on: ${{matrix.runs-on}}
+
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get -y install uuid-dev iasl build-essential python3-distutils git libbrotli-dev nasm
+      - name: Build edk2
+        run: ./build-edk2
+      - name: List produced files
+        run: ls
