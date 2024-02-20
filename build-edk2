@@ -1,0 +1,115 @@
+#!/bin/bash
+
+# Derived from cloud-hypervisor integration test code.
+
+# Necessary build dependencies
+#
+# sudo -- bash -c 'apt-get update && apt-get install -y make gcc g++ flex bison nasm m4 uuid-dev g++'
+
+WORKLOADS_DIR="$(pwd)"
+EDK2_COMMIT="8736b8fdca85e02933cdb0a13309de14c9799ece"
+EDK2_PLAT_COMMIT="b5fa396700e728c0e18b512229226f65337bf74a"
+ACPICA_COMMIT="f16a0b4d0f0edd7b78a332fcf507be2187fac21e"
+
+set -uex
+
+# Checkout source code of a GIT repo with specified branch and commit
+# Args:
+#   $1: Target directory
+#   $2: GIT URL of the repo
+#   $3: Required branch
+#   $4: Required commit (optional)
+checkout_repo() {
+    SRC_DIR="$1"
+    GIT_URL="$2"
+    GIT_BRANCH="$3"
+    GIT_COMMIT="$4"
+
+    # Check whether the local HEAD commit same as the requested commit or not.
+    # If commit is not specified, compare local HEAD and remote HEAD.
+    # Remove the folder if there is difference.
+    if [ -d "$SRC_DIR" ]; then
+        pushd "$SRC_DIR" || exit
+        git fetch
+        SRC_LOCAL_COMMIT=$(git rev-parse HEAD)
+        if [ -z "$GIT_COMMIT" ]; then
+            GIT_COMMIT=$(git rev-parse remotes/origin/"$GIT_BRANCH")
+        fi
+        popd || exit
+        if [ "$SRC_LOCAL_COMMIT" != "$GIT_COMMIT" ]; then
+            rm -rf "$SRC_DIR"
+        fi
+    fi
+
+    # Checkout the specified branch and commit (if required)
+    if [ ! -d "$SRC_DIR" ]; then
+        git clone --depth 1 "$GIT_URL" -b "$GIT_BRANCH" "$SRC_DIR"
+        if [ "$GIT_COMMIT" ]; then
+            pushd "$SRC_DIR" || exit
+            git fetch --depth 1 origin "$GIT_COMMIT"
+            git reset --hard FETCH_HEAD
+            git fsck
+            popd || exit
+        fi
+    fi
+}
+
+build_edk2() {
+    EDK2_BUILD_DIR="$WORKLOADS_DIR/edk2_build"
+    EDK2_REPO="https://github.com/tianocore/edk2.git"
+    EDK2_DIR="$EDK2_BUILD_DIR/edk2"
+    EDK2_PLAT_REPO="https://github.com/tianocore/edk2-platforms.git"
+    EDK2_PLAT_DIR="$EDK2_BUILD_DIR/edk2-platforms"
+    ACPICA_REPO="https://github.com/acpica/acpica.git"
+    ACPICA_DIR="$EDK2_BUILD_DIR/acpica"
+    export WORKSPACE="$EDK2_BUILD_DIR"
+    export PACKAGES_PATH="$EDK2_DIR:$EDK2_PLAT_DIR"
+    export IASL_PREFIX="$ACPICA_DIR/generate/unix/bin/"
+
+    if [ ! -d "$EDK2_BUILD_DIR" ]; then
+        mkdir -p "$EDK2_BUILD_DIR"
+    fi
+
+    # Prepare source code
+
+    checkout_repo "$EDK2_DIR" "$EDK2_REPO" master "$EDK2_COMMIT"
+    pushd "$EDK2_DIR" || exit
+    git submodule update --init
+    popd || exit
+    checkout_repo "$EDK2_PLAT_DIR" "$EDK2_PLAT_REPO" master "$EDK2_PLAT_COMMIT"
+    checkout_repo "$ACPICA_DIR" "$ACPICA_REPO" master "$ACPICA_COMMIT"
+
+    if [[ ! -f "$EDK2_DIR/.built" ||
+              ! -f "$EDK2_PLAT_DIR/.built" ||
+              ! -f "$ACPICA_DIR/.built" ]]; then
+        pushd "$EDK2_BUILD_DIR" || exit
+        # Build
+        make -C acpica -j "$(nproc)"
+        # shellcheck disable=SC1091
+        
+        # edk2setup relies on null expansions.
+        set -xe +u
+        source edk2/edksetup.sh
+        set -uex
+
+        make -C edk2/BaseTools -j "$(nproc)"
+        architecture=$(uname -m)
+
+        if [ "$architecture" = "x86_64" ]; then
+            build -a X64 -t GCC5 -p OvmfPkg/CloudHv/CloudHvX64.dsc -b RELEASE -n 0
+            cp Build/CloudHvX64/RELEASE_GCC5/FV/CLOUDHV.fd "$WORKLOADS_DIR"
+        elif [ "$architecture" = "aarch64" ]; then
+            build -a AARCH64 -t GCC5 -p ArmVirtPkg/ArmVirtCloudHv.dsc -b RELEASE -n 0
+            cp Build/ArmVirtCloudHv-AARCH64/RELEASE_GCC5/FV/CLOUDHV_EFI.fd "$WORKLOADS_DIR"
+        else
+            echo "Unsupported architecture: $architecture"
+        fi
+
+        touch "$EDK2_DIR"/.built
+        touch "$EDK2_PLAT_DIR"/.built
+        touch "$ACPICA_DIR"/.built
+        popd || exit
+    fi
+}
+
+build_edk2
