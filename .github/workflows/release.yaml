@@ -1,13 +1,17 @@
 name: edk2 build
-on: [create,push]
+on: [push,workflow_dispatch]
 
 jobs:
   build:
-    name: Build
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        runs-on: [ubicloud, ubicloud-arm]
-    runs-on: ${{matrix.runs-on}}
+        include:
+          - runner: ubicloud-standard-2
+            platform: x64
+          - runner: ubicloud-standard-2-arm
+            platform: arm64
 
     steps:
       - name: Code checkout
@@ -18,3 +22,9 @@ jobs:
         run: ./build-edk2
       - name: List produced files
         run: ls
+      - uses: ncipollo/release-action@v1
+        if: github.event_name == 'workflow_dispatch' && github.ref_type == 'tag'
+        with:
+          artifacts: "${{ github.workspace }}/CLOUDHV-${{ matrix.platform }}.fd"
+          body: "Release ${{ github.ref_name }}"
+          allowUpdates: true
