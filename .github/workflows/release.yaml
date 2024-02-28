@@ -10,7 +10,11 @@ jobs:
         include:
           - runner: ubicloud-standard-2
             platform: x64
+            edk2_version: edk2-stable202402
+            edk2_commit: edc6681206c1a8791981a2f911d2fb8b3d2f5768
           - runner: ubicloud-standard-2-arm
+            edk2_version: edk2-stable202211
+            edk2_commit: fff6d81270b57ee786ea18ad74f43149b9f03494
             platform: arm64
 
     steps:
@@ -19,12 +23,14 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get -y install uuid-dev iasl build-essential python3-distutils git libbrotli-dev nasm
       - name: Build edk2
-        run: ./build-edk2
+        run: EDK2_COMMIT=${{ matrix.edk2_commit}} ./build-edk2
       - name: List produced files
         run: ls
       - uses: ncipollo/release-action@v1
-        if: github.event_name == 'workflow_dispatch' && github.ref_type == 'tag'
+        if: github.event_name == 'workflow_dispatch'
         with:
           artifacts: "${{ github.workspace }}/CLOUDHV-${{ matrix.platform }}.fd"
-          body: "Release ${{ github.ref_name }}"
+          body: "Release ${{ matrix.edk2_version }}-${{ matrix.platform }}"
+          name: "${{ matrix.edk2_version }}-${{ matrix.platform }}"
+          tag: "${{ matrix.edk2_version }}-${{ matrix.platform }}"
           allowUpdates: true

@@ -12,11 +12,15 @@
 # sudo -- bash -c 'apt-get update && apt-get install -y make gcc g++ flex bison nasm m4 uuid-dev g++'
 
 WORKLOADS_DIR="$(pwd)"
-EDK2_COMMIT="8736b8fdca85e02933cdb0a13309de14c9799ece"
-EDK2_PLAT_COMMIT="b5fa396700e728c0e18b512229226f65337bf74a"
+EDK2_PLAT_COMMIT="103c88ba5b0c6259fc674e6358c68a85e882e41b"
 ACPICA_COMMIT="f16a0b4d0f0edd7b78a332fcf507be2187fac21e"
 
 set -uex
+
+if [ -z "$EDK2_COMMIT" ]; then
+  echo "Error: EDK2_COMMIT is not set." >&2
+  exit 1
+fi
 
 # Checkout source code of a GIT repo with specified branch and commit
 # Args:
