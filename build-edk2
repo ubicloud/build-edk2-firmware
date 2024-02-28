@@ -92,6 +92,7 @@ build_edk2() {
               ! -f "$EDK2_PLAT_DIR/.built" ||
               ! -f "$ACPICA_DIR/.built" ]]; then
         pushd "$EDK2_BUILD_DIR" || exit
+
         # Build
         make -C acpica -j "$(nproc)"
         # shellcheck disable=SC1091
@@ -108,6 +109,8 @@ build_edk2() {
             build -a X64 -t GCC5 -p OvmfPkg/CloudHv/CloudHvX64.dsc -b RELEASE -n 0
             cp Build/CloudHvX64/RELEASE_GCC5/FV/CLOUDHV.fd "$WORKLOADS_DIR/CLOUDHV-x64.fd"
         elif [ "$architecture" = "aarch64" ]; then
+            # We don't need the "Press ESCAPE for boot options" prompt
+            sed -i 's/\(gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|\)[0-9]\+/\10/g' edk2/ArmVirtPkg/ArmVirtCloudHv.dsc
             build -a AARCH64 -t GCC5 -p ArmVirtPkg/ArmVirtCloudHv.dsc -b RELEASE -n 0
             cp Build/ArmVirtCloudHv-AARCH64/RELEASE_GCC5/FV/CLOUDHV_EFI.fd "$WORKLOADS_DIR/CLOUDHV-arm64.fd"
         else
