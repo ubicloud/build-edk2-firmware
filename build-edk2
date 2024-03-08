@@ -12,11 +12,15 @@
 # sudo -- bash -c 'apt-get update && apt-get install -y make gcc g++ flex bison nasm m4 uuid-dev g++'
 
 WORKLOADS_DIR="$(pwd)"
-EDK2_COMMIT="8736b8fdca85e02933cdb0a13309de14c9799ece"
-EDK2_PLAT_COMMIT="b5fa396700e728c0e18b512229226f65337bf74a"
+EDK2_PLAT_COMMIT="103c88ba5b0c6259fc674e6358c68a85e882e41b"
 ACPICA_COMMIT="f16a0b4d0f0edd7b78a332fcf507be2187fac21e"
 
 set -uex
+
+if [ -z "$EDK2_COMMIT" ]; then
+  echo "Error: EDK2_COMMIT is not set." >&2
+  exit 1
+fi
 
 # Checkout source code of a GIT repo with specified branch and commit
 # Args:
@@ -88,10 +92,11 @@ build_edk2() {
               ! -f "$EDK2_PLAT_DIR/.built" ||
               ! -f "$ACPICA_DIR/.built" ]]; then
         pushd "$EDK2_BUILD_DIR" || exit
+
         # Build
         make -C acpica -j "$(nproc)"
         # shellcheck disable=SC1091
-        
+
         # edk2setup relies on null expansions.
         set -xe +u
         source edk2/edksetup.sh
@@ -102,10 +107,12 @@ build_edk2() {
 
         if [ "$architecture" = "x86_64" ]; then
             build -a X64 -t GCC5 -p OvmfPkg/CloudHv/CloudHvX64.dsc -b RELEASE -n 0
-            cp Build/CloudHvX64/RELEASE_GCC5/FV/CLOUDHV.fd "$WORKLOADS_DIR"
+            cp Build/CloudHvX64/RELEASE_GCC5/FV/CLOUDHV.fd "$WORKLOADS_DIR/CLOUDHV-x64.fd"
         elif [ "$architecture" = "aarch64" ]; then
+            # We don't need the "Press ESCAPE for boot options" prompt
+            sed -i 's/\(gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|\)[0-9]\+/\10/g' edk2/ArmVirtPkg/ArmVirtCloudHv.dsc
             build -a AARCH64 -t GCC5 -p ArmVirtPkg/ArmVirtCloudHv.dsc -b RELEASE -n 0
-            cp Build/ArmVirtCloudHv-AARCH64/RELEASE_GCC5/FV/CLOUDHV_EFI.fd "$WORKLOADS_DIR"
+            cp Build/ArmVirtCloudHv-AARCH64/RELEASE_GCC5/FV/CLOUDHV_EFI.fd "$WORKLOADS_DIR/CLOUDHV-arm64.fd"
         else
             echo "Unsupported architecture: $architecture"
         fi
