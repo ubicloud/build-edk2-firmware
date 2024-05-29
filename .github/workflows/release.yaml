@@ -29,4 +29,4 @@ jobs:
           body: "Release ${{ matrix.edk2_version }}-${{ matrix.platform }}"
           name: "${{ matrix.edk2_version }}-${{ matrix.platform }}"
           tag: "${{ matrix.edk2_version }}-${{ matrix.platform }}"
-          allowUpdates: true
+          allowUpdates: false
