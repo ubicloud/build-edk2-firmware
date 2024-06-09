@@ -4,7 +4,7 @@ This repository builds
 [cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor/)
 targeted firmware for both arm64 and x64.
 
-If you want to run a build outside of a Github Action environment, try
+If you want to run a build outside of a GitHub Action environment, try
 the following in a Debian or Ubuntu environment:
 
 ```bash
