@@ -10,8 +10,8 @@ jobs:
         include:
           - runner: ubicloud-standard-2
             platform: x64
-            edk2_version: edk2-stable202408
-            edk2_commit: b158dad150bf02879668f72ce306445250838201
+            edk2_version: edk2-stable202508
+            edk2_commit: d46aa46c8361194521391aa581593e556c707c6e
 
     steps:
       - name: Code checkout
